@@ -57,16 +57,16 @@ wh40k-server/
         ├── css/shared.css  # Full WH40K Gothic aesthetic
         └── js/shared.js    # API + toast helpers
 
-##🚀 Deployment
+## Deployment
 bashtar -xzf wh40k-server.tar.gz
 cd wh40k-server
 docker-compose up -d
 Then visit http://YOUR-IP:3000 from any device on your network.
 
-##🎮 How It Works
+## How It Works
 ViewURLPurposeHome/Portal selectorGM Console/gmMap display (pan/zoom), session control, unit overviewTablet Portal/tabletPlayers select their unit, apply modifiers, toggle conditionsAdministratum/adminFull character/faction/weapon database editor
 
-##🔑 Key Design Decisions
+## Key Design Decisions
 
 Temporary modifiers are stored as deltas in a session_modifiers table — the characters table is never touched during play. When the GM ends a session, all modifier rows are deleted — stats revert automatically.
 Real-time sync via Socket.IO — when a tablet changes a wound count or adds a condition, all other tablets and the GM view update instantly.
