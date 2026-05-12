@@ -1,75 +1,144 @@
-# WH40K-Game-Table
-Building a complete gaming control table for Warhammer 40K
+# ☩ Warhammer 40,000 — Tabletop Session Manager
 
-## Game Flow and Design
+A self-hosted web server for running Warhammer 40K tabletop sessions. Displays a battlefield map, manages a persistent character database, and connects multiple tablets for real-time stat tracking — with full session-scoped temporary modifiers that revert automatically when the session ends.
 
-![game flow](https://github.com/tomatotux/WH40K-Game-Table/blob/main/WH40k%20game%20flow.jpg)
-As show in the rough game flow diagram: 
+---
 
-1. Admin sets up the map, location of the control points, terrain locations etc via RDP. This will be shown in the app on tablets and the map will be shown via the projectors
-2. Player selects the army from the options and the associated units to be fielded via tablet. 
-3. During game play, the players can select the units in their army to see movement and shoot options on their tablet as well as a list of statistics for the units selected.
+## Features
 
+| Feature | Details |
+|---|---|
+| **GM Map View** | Full-screen battlefield map with pan & zoom. Upload any image as the map. |
+| **Character Database** | Permanent storage of units with full 10th edition stats, weapons, faction, lore. |
+| **Session Management** | Create sessions, add units, upload map. End session to revert all changes. |
+| **Tablet Portal** | Mobile-optimised player view — select a unit, see live stats, apply modifiers. |
+| **Temporary Modifiers** | Track stat deltas (Wounds, Toughness, etc.) per session. Cleared on session end. |
+| **Condition Markers** | Stunned, Bleeding, On Fire, Blessed, Cursed, Pinned — togglable per unit. |
+| **Real-time Sync** | WebSocket (Socket.IO) — GM and all tablets update instantly. |
+| **Administratum** | Full CRUD for characters, factions, and weapons. |
 
-## RFID Tracker Portion
-- Multiple RFID readers (Current version are the SL018, Ref: https://github.com/michaelkroll/BT-RFID-Reader/blob/master/arduino/lib/SL018/README)
+---
 
-![table rfid reader location](https://github.com/tomatotux/WH40K-Game-Table/blob/main/WH40K%20Table.jpg)
+## Quick Start (Docker)
 
-
-RFID Readers are placed across the bottom of the board. Each individual unit has an RFID tag on it with a unique ID linked to the stats in the database on the server. The readers will read the tags and report the dB of the tags to the various readers allowing the triangulation of the piece on the board. End goal is to have the system recognize the location of the pieces and report it on the tablets on the board allowing players to select units on their tablet and have them highlight the location on the board as well as highlight the stats of the units on the tablets.
-
-## Needs for development
- - Testing and completion of measures for the RFID readers to verify triangulation function
- - Review existing projects for army builders and potentially fork the DB references and link to RFID tags
-	 - Review <a href=https://furka.github.io/40k-10th-list-builder/>Furka's List Builder
-	 - Review <a href=https://github.com/BSData/wh40k-10e/>BSData List Builder
-	 - Review <a href=https://www.newrecruit.eu/app/MyLists/>NewRecruit List Builder
- - Find way to designate the size of the board as a reference for the application in performing the math calculations
- - Build web server
-	 - Player interface for Tablets
-
-## Architecture Plan:
-
-Backend: Node.js + Express + SQLite (via better-sqlite3)
-Frontend: Vanilla HTML/CSS/JS with a dark Warhammer 40K aesthetic
-Views: GM Map View (displays map image) + Tablet Portal (character selection & stats)
-Session System: Temporary modifiers tracked in memory/session table, reverted on session end
-Docker: docker-compose with the Node app
-
-## Architecture
-wh40k-server/
-├── Dockerfile              # Alpine Node.js 20 image
-├── docker-compose.yml      # One-command deployment
-├── package.json
-└── src/
-    ├── server.js           # Express + Socket.IO server
-    ├── db/database.js      # SQLite schema + seed data
-    ├── routes/
-    │   ├── characters.js   # Full CRUD for units/weapons
-    │   ├── sessions.js     # Session + modifier management
-    │   └── factions.js     # Faction CRUD
-    └── public/
-        ├── index.html      # Landing portal
-        ├── gm.html         # GM Command view
-        ├── tablet.html     # Player tablet view
-        ├── admin.html      # Database admin panel
-        ├── css/shared.css  # Full WH40K Gothic aesthetic
-        └── js/shared.js    # API + toast helpers
-
-## Deployment
-bashtar -xzf wh40k-server.tar.gz
+```bash
+# 1. Clone or copy this folder
 cd wh40k-server
+
+# 2. Build and launch
 docker-compose up -d
-Then visit http://YOUR-IP:3000 from any device on your network.
 
-## How It Works
-ViewURLPurposeHome/Portal selectorGM Console/gmMap display (pan/zoom), session control, unit overviewTablet Portal/tabletPlayers select their unit, apply modifiers, toggle conditionsAdministratum/adminFull character/faction/weapon database editor
+# 3. Open in browser
+open http://localhost:3000
+```
 
-## Key Design Decisions
+The database and map uploads are persisted in the `wh40k_data` Docker volume — they survive container restarts.
 
-Temporary modifiers are stored as deltas in a session_modifiers table — the characters table is never touched during play. When the GM ends a session, all modifier rows are deleted — stats revert automatically.
-Real-time sync via Socket.IO — when a tablet changes a wound count or adds a condition, all other tablets and the GM view update instantly.
-8 pre-seeded characters across Space Marines, Chaos, Orks, and Necrons to get you started immediately.
-Map pan & zoom with mouse drag and scroll wheel on the GM view.
-Data persistence via a named Docker volume — the SQLite database and uploaded maps survive container restarts.
+---
+
+## URLs
+
+| URL | Purpose |
+|---|---|
+| `http://<host>:3000/` | Home / portal selector |
+| `http://<host>:3000/gm` | **GM Console** — map display, session control |
+| `http://<host>:3000/tablet` | **Tablet Portal** — player stat tracker |
+| `http://<host>:3000/admin` | **Administratum** — character database editor |
+
+On your local network, replace `<host>` with your machine's IP (e.g. `192.168.1.50`). Each tablet connects via its browser to `/tablet`.
+
+---
+
+## How Sessions Work
+
+1. **GM opens `/gm`** → clicks "New" tab → names the session, selects units → "Commence Battle"
+2. **GM uploads a map** using the 📤 Map button (supports jpg, png, webp up to 20MB)
+3. **Tablets open `/tablet`** → they auto-detect the active session → select their unit
+4. **During play:** tablets (or GM) apply `+`/`-` modifiers to stats. Changes sync in real-time.
+5. **Session end:** GM clicks 🛑 End Session — ALL modifiers and conditions are wiped. Permanent DB stats unchanged.
+
+---
+
+## Temporary Modifiers
+
+Modifiers are stored in `session_modifiers` table as **deltas** (e.g. `wounds -2`). The UI shows:
+- **Effective value** = base stat + delta
+- Original base value shown in small text beneath
+- Positive delta = gold border | Negative delta = red border
+
+When the session ends (`POST /api/sessions/:id/end`), all rows in `session_modifiers` and `session_conditions` for that session are deleted. The `characters` table is never mutated during play.
+
+---
+
+## API Reference
+
+### Characters
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/characters` | List all characters |
+| GET | `/api/characters/:id` | Get character + weapons |
+| POST | `/api/characters` | Create character |
+| PUT | `/api/characters/:id` | Update character |
+| DELETE | `/api/characters/:id` | Delete character |
+| GET | `/api/characters/:id/weapons` | List weapons |
+| POST | `/api/characters/:id/weapons` | Add weapon |
+| DELETE | `/api/characters/:id/weapons/:wid` | Remove weapon |
+
+### Sessions
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/sessions` | List all sessions |
+| GET | `/api/sessions/active` | Get current active session |
+| GET | `/api/sessions/:id` | Session + characters + modifiers |
+| POST | `/api/sessions` | Create session |
+| POST | `/api/sessions/:id/map` | Upload map (multipart) |
+| POST | `/api/sessions/:id/end` | **End session — clears all modifiers** |
+| POST | `/api/sessions/:id/characters` | Add character to session |
+| DELETE | `/api/sessions/:id/characters/:cid` | Remove character from session |
+
+### Modifiers
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/sessions/:id/characters/:cid/modifiers` | Get modifiers + conditions |
+| PUT | `/api/sessions/:id/characters/:cid/modifiers` | Upsert modifier `{field, delta}` |
+| DELETE | `/api/sessions/:id/characters/:cid/modifiers/:field` | Delete one modifier |
+| POST | `/api/sessions/:id/characters/:cid/conditions` | Add condition |
+| DELETE | `/api/sessions/:id/characters/:cid/conditions/:condition` | Remove condition |
+
+---
+
+## Development (without Docker)
+
+```bash
+npm install
+npm start
+# Server runs on http://localhost:3000
+```
+
+Requires Node.js 18+.
+
+---
+
+## Customisation
+
+- **Map images**: any raster image (jpg/png/webp). Recommended 4K for large displays.
+- **Factions & Characters**: fully editable via `/admin`
+- **Stat fields**: defined in `src/db/database.js` schema — add columns and update the UI arrays in the HTML files if you need additional stats.
+- **Port**: change in `docker-compose.yml` or set `PORT` env var.
+- **Conditions**: edit the `CONDITIONS` array in `tablet.html` and `gm.html`.
+
+---
+
+## Stack
+
+- **Runtime**: Node.js 20 (Alpine Docker image)
+- **Web framework**: Express 4
+- **Database**: SQLite via `better-sqlite3` (no separate DB server needed)
+- **Real-time**: Socket.IO 4
+- **File uploads**: Multer
+- **Frontend**: Vanilla HTML/CSS/JS with Cinzel & Crimson Text fonts (Google Fonts)
+- **Deployment**: Docker + docker-compose
+
+---
+
+*"Only in death does duty end."*

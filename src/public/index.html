@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WH40K Session Manager</title>
+  <link rel="stylesheet" href="/css/shared.css">
+  <style>
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(201, 168, 76, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 100%, rgba(139, 26, 26, 0.1) 0%, transparent 60%);
+    }
+
+    .imperial-aquila {
+      font-size: 5rem;
+      color: var(--gold-dim);
+      margin-bottom: 1.5rem;
+      filter: drop-shadow(0 0 30px rgba(201, 168, 76, 0.4));
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { filter: drop-shadow(0 0 15px rgba(201, 168, 76, 0.3)); }
+      50%       { filter: drop-shadow(0 0 40px rgba(201, 168, 76, 0.6)); }
+    }
+
+    .hero-title {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: clamp(1.5rem, 4vw, 2.8rem);
+      color: var(--gold-bright);
+      text-shadow: 0 0 40px rgba(201, 168, 76, 0.4);
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-sub {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.3em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: 3rem;
+    }
+
+    .portal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .portal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .portal-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+      transition: opacity 0.3s;
+      opacity: 0;
+    }
+
+    .portal-card:hover { border-color: var(--gold-dim); transform: translateY(-3px); box-shadow: var(--shadow-gold); }
+    .portal-card:hover::before { opacity: 1; }
+
+    .portal-icon { font-size: 2.5rem; display: block; margin-bottom: 1rem; }
+    .portal-name { font-family: 'Cinzel', serif; font-size: 1rem; color: var(--gold); margin-bottom: 0.5rem; }
+    .portal-desc { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; }
+
+    .version { margin-top: 3rem; font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.15em; font-family: 'Cinzel', serif; }
+  </style>
+</head>
+<body>
+  <main class="hero">
+    <div class="imperial-aquila">☩</div>
+    <h1 class="hero-title">Warhammer 40,000</h1>
+    <p class="hero-sub">Tabletop Session Command</p>
+
+    <div class="portal-grid">
+      <a href="/gm" class="portal-card">
+        <span class="portal-icon">🗺️</span>
+        <div class="portal-name">GM Command</div>
+        <p class="portal-desc">Battlefield map display, session management, and full character oversight.</p>
+      </a>
+      <a href="/tablet" class="portal-card">
+        <span class="portal-icon">⚔️</span>
+        <div class="portal-name">Tablet Portal</div>
+        <p class="portal-desc">Player interface for viewing character stats and tracking session modifiers.</p>
+      </a>
+      <a href="/admin" class="portal-card">
+        <span class="portal-icon">📜</span>
+        <div class="portal-name">Administratum</div>
+        <p class="portal-desc">Manage the permanent character database, factions, weapons, and rosters.</p>
+      </a>
+    </div>
+
+    <p class="version">&#x2015; In the Grim Darkness of the Far Future, There Is Only War &#x2015;</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GM Command — WH40K</title>
+  <link rel="stylesheet" href="/css/shared.css">
+  <style>
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    .app-header { flex-shrink: 0; }
+
+    .gm-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Left Panel ── */
+    .left-panel {
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .panel-tab {
+      flex: 1;
+      padding: 0.6rem 0.4rem;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      font-family: 'Cinzel', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .panel-tab.active {
+      color: var(--gold);
+      border-bottom-color: var(--gold-dim);
+      background: rgba(201, 168, 76, 0.05);
+    }
+
+    .tab-content { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+    .tab-content.active { display: flex; }
+
+    /* Session Panel */
+    .session-info {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .session-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .session-name {
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      color: var(--gold);
+    }
+
+    .char-list { padding: 0.5rem; flex: 1; overflow-y: auto; }
+
+    .char-entry {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      padding: 0.6rem 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .char-entry:hover { border-color: var(--gold-dim); background: var(--bg-card-hover); }
+    .char-entry.selected { border-color: var(--gold-dim); background: rgba(201, 168, 76, 0.08); }
+
+    .char-entry-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.78rem;
+      color: var(--white);
+    }
+
+    .char-entry-meta {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
+    }
+
+    .char-hp-bar {
+      height: 3px;
+      background: var(--border);
+      margin-top: 0.4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .char-hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green-bright), var(--gold));
+      transition: width 0.5s;
+    }
+
+    /* Map Panel */
+    .map-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #030305;
+      position: relative;
+    }
+
+    .map-toolbar {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .map-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .map-container:active { cursor: grabbing; }
+
+    #map-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transform-origin: center;
+      transition: transform 0.1s;
+      display: none;
+      image-rendering: crisp-edges;
+    }
+
+    .map-placeholder {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 3rem;
+    }
+
+    .map-placeholder .icon { font-size: 4rem; margin-bottom: 1rem; display: block; }
+    .map-placeholder p { font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    /* Detail Panel */
+    #char-detail { padding: 1rem; overflow-y: auto; }
+
+    .detail-header {
+      margin-bottom: 1rem;
+    }
+
+    .detail-name {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--gold-bright);
+    }
+
+    .detail-section-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      margin-bottom: 0.6rem;
+      margin-top: 0.8rem;
+    }
+
+    /* New Session Form */
+    .new-session-form { padding: 1rem; }
+    .char-picker { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); margin-top: 0.3rem; }
+    .char-picker-item {
+      padding: 0.4rem 0.7rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      border-bottom: 1px solid rgba(42,42,62,0.5);
+    }
+    .char-picker-item:hover { background: var(--bg-card-hover); }
+    .char-picker-item input[type=checkbox] { accent-color: var(--gold-dim); width: 14px; height: 14px; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-logo">
+    <span class="skull-icon">☩</span>
+    <div>
+      <div class="header-title">Warhammer 40,000</div>
+      <div class="header-subtitle">GM Command Console</div>
+    </div>
+  </div>
+  <nav class="nav-links">
+    <a href="/" class="nav-link">⬅ Home</a>
+    <a href="/tablet" class="nav-link">Tablet View</a>
+    <a href="/admin" class="nav-link">Administratum</a>
+  </nav>
+</header>
+
+<div class="gm-layout">
+
+  <!-- ── Left Panel ── -->
+  <div class="left-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="switchTab('session')">Session</button>
+      <button class="panel-tab" onclick="switchTab('characters')">Units</button>
+      <button class="panel-tab" onclick="switchTab('new-session')">New</button>
+    </div>
+
+    <!-- Session Tab -->
+    <div class="tab-content active" id="tab-session">
+      <div class="session-info" id="session-info">
+        <div class="session-status">
+          <span class="status-dot" id="session-status-dot"></span>
+          <span id="session-status-text">No active session</span>
+        </div>
+        <div class="session-name" id="session-name-display">—</div>
+        <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;" id="session-actions"></div>
+      </div>
+      <div class="char-list" id="session-char-list">
+        <div class="text-center text-dim" style="padding:2rem; font-family:'Cinzel',serif; font-size:0.75rem;">
+          Create or load a session
+        </div>
+      </div>
+    </div>
+
+    <!-- Characters Tab -->
+    <div class="tab-content" id="tab-characters">
+      <div id="char-detail" style="display:none;"></div>
+      <div id="char-detail-placeholder" style="padding:2rem; text-align:center; color:var(--text-dim); font-family:'Cinzel',serif; font-size:0.75rem;">
+        Select a unit from the session list
+      </div>
+    </div>
+
+    <!-- New Session Tab -->
+    <div class="tab-content" id="tab-new-session">
+      <div class="new-session-form">
+        <h3 style="font-size:0.8rem; margin-bottom:1rem;">Create New Session</h3>
+        <div class="form-group">
+          <label>Session Name</label>
+          <input type="text" id="new-session-name" placeholder="e.g. Battle of Calth">
+        </div>
+        <div class="form-group">
+          <label>Select Units</label>
+          <div class="char-picker" id="char-picker"></div>
+        </div>
+        <button class="btn btn-primary w-full" onclick="createSession()">⚔ Commence Battle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Map Area ── -->
+  <div class="map-area">
+    <div class="map-toolbar">
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('map-upload').click()">📤 Map</button>
+      <input type="file" id="map-upload" style="display:none" accept="image/*" onchange="uploadMap(this)">
+      <button class="btn btn-ghost btn-sm" onclick="zoomIn()">＋</button>
+      <button class="btn btn-ghost btn-sm" onclick="zoomOut()">－</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetZoom()">⊡</button>
+    </div>
+
+    <div class="map-container" id="map-container">
+      <div class="map-placeholder" id="map-placeholder">
+        <span class="icon">🗺️</span>
+        <p>No battlefield map loaded</p>
+        <p style="margin-top:0.5rem; font-size:0.7rem; color:var(--text-dim)">Upload an image using the Map button</p>
+      </div>
+      <img id="map-image" alt="Battlefield Map" draggable="false">
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/shared.js"></script>
+<script>
+let currentSession = null;
+let scale = 1;
+let isDragging = false, startX, startY, translateX = 0, translateY = 0;
+const socket = io();
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  await loadActiveSession();
+  await loadAllCharsForPicker();
+}
+
+async function loadActiveSession() {
+  const session = await api('/api/sessions/active');
+  if (session) {
+    currentSession = session;
+    await refreshSession();
+    socket.emit('join-session', session.id);
+  }
+}
+
+async function refreshSession() {
+  if (!currentSession) return;
+  const data = await api(`/api/sessions/${currentSession.id}`);
+  currentSession = data;
+  renderSessionHeader(data);
+  renderSessionChars(data.characters || []);
+  if (data.map_image) showMap(data.map_image);
+}
+
+function renderSessionHeader(s) {
+  document.getElementById('session-status-dot').className = `status-dot ${s.status}`;
+  document.getElementById('session-status-text').textContent = s.status === 'active' ? 'Active Session' : 'Session Ended';
+  document.getElementById('session-name-display').textContent = s.name;
+
+  const actions = document.getElementById('session-actions');
+  if (s.status === 'active') {
+    actions.innerHTML = `
+      <button class="btn btn-danger btn-sm" onclick="endSession()">🛑 End Session</button>
+      <button class="btn btn-ghost btn-sm" onclick="refreshSession()">↻ Refresh</button>
+    `;
+  } else {
+    actions.innerHTML = `<span style="font-size:0.7rem; color:var(--text-dim); font-family:'Cinzel',serif;">Session completed</span>`;
+  }
+}
+
+function renderSessionChars(chars) {
+  const container = document.getElementById('session-char-list');
+  if (!chars.length) {
+    container.innerHTML = '<div class="text-center text-dim" style="padding:2rem; font-family:\'Cinzel\',serif; font-size:0.75rem;">No units in session</div>';
+    return;
+  }
+  container.innerHTML = chars.map(c => {
+    const woundsEff = c.effective?.wounds ?? c.wounds;
+    const woundsBase = c.wounds;
+    const pct = Math.max(0, Math.min(100, (woundsEff / woundsBase) * 100));
+    const hpColor = pct > 60 ? 'var(--green-bright)' : pct > 30 ? 'var(--gold)' : 'var(--red-bright)';
+    const condBadges = (c.conditions || []).map(cd => `<span class="condition-tag ${cd.toLowerCase().replace(' ','-')}">${cd}</span>`).join('');
+    return `
+      <div class="char-entry" onclick="selectChar(${c.id})">
+        <div style="flex:1; min-width:0;">
+          <div class="char-entry-name">${c.name}</div>
+          <div class="char-entry-meta">${c.faction_name || '—'} · ${c.unit_type}</div>
+          ${condBadges ? `<div style="margin-top:0.3rem; display:flex; gap:0.25rem; flex-wrap:wrap;">${condBadges}</div>` : ''}
+          <div class="char-hp-bar">
+            <div class="char-hp-fill" style="width:${pct}%; background:${hpColor};"></div>
+          </div>
+        </div>
+        <div style="text-align:right; margin-left:0.5rem;">
+          <div style="font-family:'Cinzel',serif; font-size:0.8rem; color:var(--white);">${woundsEff}/${woundsBase}</div>
+          <div style="font-size:0.6rem; color:var(--text-dim);">W</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectChar(id) {
+  if (!currentSession) return;
+  const char = (currentSession.characters || []).find(c => c.id === id);
+  if (!char) return;
+  switchTab('characters');
+  renderCharDetail(char);
+}
+
+function renderCharDetail(c) {
+  const el = document.getElementById('char-detail');
+  document.getElementById('char-detail-placeholder').style.display = 'none';
+  el.style.display = 'block';
+
+  const statFields = [
+    { key: 'movement', label: 'M', suffix: '"' },
+    { key: 'toughness', label: 'T' },
+    { key: 'save', label: 'Sv', suffix: '+' },
+    { key: 'wounds', label: 'W' },
+    { key: 'leadership', label: 'Ld' },
+    { key: 'objective_control', label: 'OC' },
+    { key: 'ws', label: 'WS', suffix: '+' },
+    { key: 'bs', label: 'BS', suffix: '+' },
+    { key: 'inv_save', label: 'Inv', suffix: '+' },
+    { key: 'feel_no_pain', label: 'FNP', suffix: '+' },
+  ];
+
+  const modMap = {};
+  (c.modifiers || []).forEach(m => { modMap[m.field] = m.delta; });
+
+  const statCells = statFields.map(({ key, label, suffix = '' }) => {
+    const base = c[key] || 0;
+    const delta = modMap[key] || 0;
+    const eff = base + delta;
+    const cls = delta > 0 ? 'modified' : delta < 0 ? 'modified-negative' : '';
+    const deltaStr = delta !== 0 ? `<span class="stat-delta ${delta > 0 ? 'pos' : 'neg'}">${delta > 0 ? '+' : ''}${delta}</span>` : '';
+    const baseStr = delta !== 0 ? `<span class="stat-base">(${base})</span>` : '';
+    return `<div class="stat-cell ${cls}">
+      <span class="stat-label">${label}</span>
+      <span class="stat-value">${eff === 0 && key === 'inv_save' ? '—' : eff + suffix}</span>
+      ${baseStr}${deltaStr}
+    </div>`;
+  }).join('');
+
+  const conditions = (c.conditions || []).map(cd =>
+    `<span class="condition-tag ${cd.toLowerCase().replace(' ','-')}">${cd}
+      <button onclick="removeCondition(${c.id},'${cd}')" style="background:none;border:none;color:inherit;cursor:pointer;margin-left:3px;font-size:0.8rem;">×</button>
+    </span>`
+  ).join('');
+
+  const weaponRows = (c.weapons || []).map(w => `
+    <tr>
+      <td>${w.name}</td>
+      <td class="${w.weapon_type === 'Ranged' ? 'ranged' : 'melee'}">${w.weapon_type}</td>
+      <td>${w.range_inches ? w.range_inches + '"' : '—'}</td>
+      <td>${w.attacks}</td>
+      <td>${w.skill}+</td>
+      <td>${w.strength}</td>
+      <td>${w.ap === 0 ? '0' : w.ap}</td>
+      <td>${w.damage}</td>
+    </tr>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-name">${c.name}</div>
+      <div style="margin-top:0.25rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+        <span class="faction-badge" style="border:1px solid ${c.faction_color||'#555'}; color:${c.faction_color||'#aaa'};">${c.faction_name||'Unknown'}</span>
+        <span style="font-size:0.75rem; color:var(--text-secondary);">${c.unit_type} · ${c.points_cost} pts</span>
+      </div>
+    </div>
+
+    <div class="detail-section-title">Characteristics</div>
+    <div class="stat-grid">${statCells}</div>
+
+    <div class="detail-section-title" style="margin-top:1rem;">Modify Stats (Session)</div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+      ${statFields.slice(0,8).map(({ key, label }) => `
+        <div style="display:flex; align-items:center; gap:0.25rem; background:var(--bg-void); border:1px solid var(--border); padding:0.25rem 0.4rem;">
+          <span style="font-family:'Cinzel',serif; font-size:0.6rem; color:var(--text-secondary);">${label}</span>
+          <button class="btn btn-ghost btn-sm" style="padding:0 0.3rem;" onclick="applyMod(${c.id},'${key}',-1)">-</button>
+          <button class="btn btn-ghost btn-sm" style="padding:0 0.3rem;" onclick="applyMod(${c.id},'${key}',1)">+</button>
+        </div>
+      `).join('')}
+      <button class="btn btn-ghost btn-sm" onclick="clearMods(${c.id})">✕ Clear</button>
+    </div>
+
+    ${conditions ? `<div class="detail-section-title">Conditions</div>
+    <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.5rem;">${conditions}</div>` : ''}
+
+    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+      ${['Stunned','Bleeding','On Fire','Blessed','Cursed','Pinned'].map(cd =>
+        `<button class="btn btn-ghost btn-sm" onclick="addCondition(${c.id},'${cd}')">${cd}</button>`
+      ).join('')}
+    </div>
+
+    ${c.weapons?.length ? `
+    <div class="detail-section-title" style="margin-top:1rem;">Weapons</div>
+    <div style="overflow-x:auto;">
+      <table class="weapon-table">
+        <thead><tr><th>Weapon</th><th>Type</th><th>Rng</th><th>A</th><th>Skill</th><th>S</th><th>AP</th><th>D</th></tr></thead>
+        <tbody>${weaponRows}</tbody>
+      </table>
+    </div>` : ''}
+
+    ${c.lore ? `<div class="detail-section-title" style="margin-top:1rem;">Lore</div>
+    <p style="font-size:0.9rem; color:var(--text-secondary); font-style:italic;">${c.lore}</p>` : ''}
+  `;
+}
+
+// ── Modifiers ─────────────────────────────────────────────────────────────
+async function applyMod(charId, field, delta) {
+  if (!currentSession) return;
+  const char = (currentSession.characters || []).find(c => c.id === charId);
+  if (!char) return;
+  const existing = (char.modifiers || []).find(m => m.field === field)?.delta || 0;
+  const newDelta = existing + delta;
+  await api(`/api/sessions/${currentSession.id}/characters/${charId}/modifiers`, 'PUT', { field, delta: newDelta });
+  socket.emit('modifier-update', { sessionId: currentSession.id, charId, field, delta: newDelta });
+  await refreshSession();
+  selectChar(charId);
+}
+
+async function clearMods(charId) {
+  if (!currentSession) return;
+  const char = (currentSession.characters || []).find(c => c.id === charId);
+  for (const mod of (char?.modifiers || [])) {
+    await api(`/api/sessions/${currentSession.id}/characters/${charId}/modifiers/${mod.field}`, 'DELETE');
+  }
+  await refreshSession();
+  selectChar(charId);
+}
+
+async function addCondition(charId, condition) {
+  if (!currentSession) return;
+  await api(`/api/sessions/${currentSession.id}/characters/${charId}/conditions`, 'POST', { condition });
+  socket.emit('condition-update', { sessionId: currentSession.id, charId, condition, action: 'add' });
+  await refreshSession();
+  selectChar(charId);
+}
+
+async function removeCondition(charId, condition) {
+  if (!currentSession) return;
+  await api(`/api/sessions/${currentSession.id}/characters/${charId}/conditions/${encodeURIComponent(condition)}`, 'DELETE');
+  await refreshSession();
+  selectChar(charId);
+}
+
+// ── Session Actions ────────────────────────────────────────────────────────
+async function endSession() {
+  if (!currentSession) return;
+  if (!confirm('End session? All temporary modifiers and conditions will be cleared.')) return;
+  await api(`/api/sessions/${currentSession.id}/end`, 'POST');
+  socket.emit('session-end', currentSession.id);
+  toast('Session ended. All modifiers cleared.', 'success');
+  await refreshSession();
+}
+
+async function createSession() {
+  const name = document.getElementById('new-session-name').value.trim();
+  if (!name) return toast('Enter a session name');
+  const checked = [...document.querySelectorAll('#char-picker input:checked')].map(el => parseInt(el.value));
+  if (!checked.length) return toast('Select at least one unit');
+  const { id } = await api('/api/sessions', 'POST', { name, character_ids: checked });
+  toast(`Session "${name}" created`, 'success');
+  currentSession = { id };
+  await refreshSession();
+  socket.emit('join-session', id);
+  switchTab('session');
+}
+
+async function loadAllCharsForPicker() {
+  const chars = await api('/api/characters');
+  document.getElementById('char-picker').innerHTML = chars.map(c => `
+    <label class="char-picker-item">
+      <input type="checkbox" value="${c.id}">
+      <span>${c.name}</span>
+      <span style="margin-left:auto; font-size:0.7rem; color:var(--text-dim);">${c.faction_name||''}</span>
+    </label>
+  `).join('');
+}
+
+// ── Map ───────────────────────────────────────────────────────────────────
+function showMap(src) {
+  const img = document.getElementById('map-image');
+  document.getElementById('map-placeholder').style.display = 'none';
+  img.src = src;
+  img.style.display = 'block';
+}
+
+async function uploadMap(input) {
+  if (!currentSession || !input.files[0]) return toast('No active session');
+  const fd = new FormData();
+  fd.append('map', input.files[0]);
+  const res = await fetch(`/api/sessions/${currentSession.id}/map`, { method: 'POST', body: fd });
+  const data = await res.json();
+  showMap(data.map_image);
+  socket.emit('map-change', { sessionId: currentSession.id, map_image: data.map_image });
+  toast('Map updated', 'success');
+}
+
+// ── Map Pan & Zoom ─────────────────────────────────────────────────────────
+function zoomIn() { scale = Math.min(scale + 0.2, 5); applyTransform(); }
+function zoomOut() { scale = Math.max(scale - 0.2, 0.3); applyTransform(); }
+function resetZoom() { scale = 1; translateX = 0; translateY = 0; applyTransform(); }
+
+function applyTransform() {
+  const img = document.getElementById('map-image');
+  img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+}
+
+const mapContainer = document.getElementById('map-container');
+mapContainer.addEventListener('mousedown', e => {
+  if (e.target.tagName === 'IMG') { isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY; }
+});
+document.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  translateX = e.clientX - startX; translateY = e.clientY - startY; applyTransform();
+});
+document.addEventListener('mouseup', () => { isDragging = false; });
+mapContainer.addEventListener('wheel', e => {
+  e.preventDefault();
+  scale = Math.max(0.3, Math.min(5, scale - e.deltaY * 0.001));
+  applyTransform();
+}, { passive: false });
+
+// ── Socket updates ────────────────────────────────────────────────────────
+socket.on('modifier-updated', async () => { await refreshSession(); });
+socket.on('condition-updated', async () => { await refreshSession(); });
+socket.on('map-changed', data => { showMap(data.map_image); });
+socket.on('session-ended', () => { toast('Session ended by GM'); refreshSession(); });
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.panel-tab').forEach((t, i) => {
+    const names = ['session', 'characters', 'new-session'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>

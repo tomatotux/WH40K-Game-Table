@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Tablet Portal — WH40K</title>
+  <link rel="stylesheet" href="/css/shared.css">
+  <style>
+    body { overflow-y: auto; }
+
+    .tablet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    .tablet-header .title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      color: var(--gold);
+    }
+
+    /* ── Character Select Screen ── */
+    #select-screen { padding: 1rem; }
+
+    .select-title {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 1.1rem;
+      color: var(--gold-bright);
+      text-align: center;
+      margin: 1rem 0 0.25rem;
+    }
+
+    .select-sub {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+
+    .faction-group { margin-bottom: 1.5rem; }
+
+    .faction-header {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.4rem 0.6rem;
+      border-left: 3px solid;
+      margin-bottom: 0.5rem;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .char-select-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .char-select-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .char-select-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+      transform: scaleX(0);
+      transition: transform 0.3s;
+    }
+
+    .char-select-card:hover { border-color: var(--gold-dim); background: var(--bg-card-hover); }
+    .char-select-card:hover::after { transform: scaleX(1); }
+
+    .char-card-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.9rem;
+      color: var(--white);
+      margin-bottom: 0.3rem;
+    }
+
+    .char-card-meta { font-size: 0.8rem; color: var(--text-secondary); }
+
+    .char-mini-stats {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+      font-family: 'Cinzel', serif;
+    }
+
+    .mini-stat {
+      text-align: center;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.4rem;
+      min-width: 32px;
+    }
+
+    .mini-stat-label { font-size: 0.5rem; color: var(--text-dim); }
+    .mini-stat-val { font-size: 0.85rem; color: var(--white); }
+
+    /* ── Character Detail View ── */
+    #detail-screen { display: none; padding: 0; }
+
+    .char-hero {
+      background: linear-gradient(180deg, rgba(201,168,76,0.1) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.2rem 1rem;
+    }
+
+    .char-hero-name {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 1.3rem;
+      color: var(--gold-bright);
+      text-shadow: 0 0 20px rgba(201,168,76,0.3);
+    }
+
+    .char-hero-meta {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .detail-body { padding: 1rem; }
+
+    .section-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Big stat cells for tablet */
+    .stat-grid-tablet {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 480px) {
+      .stat-grid-tablet { grid-template-columns: repeat(5, 1fr); gap: 0.25rem; }
+    }
+
+    .stat-cell-lg {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
+      text-align: center;
+      padding: 0.6rem 0.3rem;
+      transition: all 0.3s;
+    }
+
+    .stat-cell-lg.modified { border-color: var(--gold-dim); background: rgba(201,168,76,0.1); }
+    .stat-cell-lg.modified-negative { border-color: var(--red-bright); background: rgba(192,57,43,0.1); }
+
+    .stat-cell-lg .stat-label { font-size: 0.55rem; color: var(--text-secondary); }
+    .stat-cell-lg .stat-value { font-size: 1.5rem; font-family: 'Cinzel', serif; font-weight: 700; color: var(--white); }
+    .stat-cell-lg .stat-delta { font-size: 0.7rem; }
+
+    /* Modifier controls */
+    .mod-controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .mod-control {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 0.5rem;
+      text-align: center;
+    }
+
+    .mod-control-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    .mod-buttons {
+      display: flex;
+      gap: 0.25rem;
+      justify-content: center;
+    }
+
+    .mod-btn {
+      width: 32px; height: 32px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+      font-family: 'Cinzel', serif;
+    }
+
+    .mod-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+    .mod-btn.minus:hover { border-color: var(--red-bright); color: var(--red-glow); }
+
+    /* Conditions */
+    .conditions-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .condition-btn {
+      padding: 0.4rem;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--text-secondary);
+      font-family: 'Cinzel', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .condition-btn.active { border-color: var(--gold-dim); color: var(--gold); background: rgba(201,168,76,0.1); }
+    .condition-btn.active.bleeding { border-color: var(--red-bright); color: var(--red-glow); background: rgba(192,57,43,0.1); }
+    .condition-btn.active.stunned { border-color: #b8860b; color: #ffd700; background: rgba(184,134,11,0.1); }
+    .condition-btn.active.on-fire { border-color: #e67e22; color: #f39c12; background: rgba(230,126,34,0.1); }
+    .condition-btn.active.cursed { border-color: #8e44ad; color: #9b59b6; background: rgba(142,68,173,0.1); }
+
+    .no-session-msg {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-secondary);
+    }
+
+    .no-session-msg .icon { font-size: 3rem; display: block; margin-bottom: 1rem; }
+    .no-session-msg p { font-family: 'Cinzel', serif; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+<div class="tablet-header">
+  <a href="/" style="color:var(--text-secondary); text-decoration:none; font-family:'Cinzel',serif; font-size:0.65rem;">☩ WH40K</a>
+  <div class="title" id="header-session-name">No Active Session</div>
+  <div style="display:flex; align-items:center; gap:0.5rem;">
+    <span class="status-dot" id="conn-dot"></span>
+    <button class="btn btn-ghost btn-sm" id="back-btn" onclick="showSelectScreen()" style="display:none;">← Back</button>
+  </div>
+</div>
+
+<!-- Character Select Screen -->
+<div id="select-screen">
+  <div class="no-session-msg" id="no-session-msg">
+    <span class="icon">⏳</span>
+    <p>Awaiting session...</p>
+    <p style="margin-top:0.5rem; font-size:0.7rem; color:var(--text-dim);">The GM must start a session</p>
+  </div>
+  <div id="faction-list" style="display:none;">
+    <div class="select-title">Select Your Unit</div>
+    <div class="select-sub">Choose a unit to track for this session</div>
+    <div id="factions-container"></div>
+  </div>
+</div>
+
+<!-- Detail View -->
+<div id="detail-screen">
+  <div class="char-hero">
+    <div class="char-hero-name" id="detail-name">—</div>
+    <div class="char-hero-meta">
+      <span class="faction-badge" id="detail-faction" style="border:1px solid #555;"></span>
+      <span style="font-size:0.8rem; color:var(--text-secondary);" id="detail-type-pts">—</span>
+    </div>
+  </div>
+
+  <div class="detail-body">
+    <!-- Stats -->
+    <div class="section-label">Characteristics</div>
+    <div class="stat-grid-tablet" id="stat-grid"></div>
+
+    <!-- Modifiers -->
+    <div class="section-label">Session Modifiers</div>
+    <div class="mod-controls" id="mod-controls"></div>
+
+    <!-- Conditions -->
+    <div class="section-label">Status Conditions</div>
+    <div class="conditions-grid" id="conditions-grid"></div>
+
+    <!-- Weapons -->
+    <div class="section-label">Weapons</div>
+    <div id="weapons-section"></div>
+
+    <!-- Lore -->
+    <div id="lore-section"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/shared.js"></script>
+<script>
+let currentSession = null;
+let selectedChar = null;
+const socket = io();
+
+const CONDITIONS = ['Stunned', 'Bleeding', 'On Fire', 'Blessed', 'Cursed', 'Pinned'];
+const STAT_FIELDS = [
+  { key: 'movement', label: 'M', suffix: '"' },
+  { key: 'toughness', label: 'T' },
+  { key: 'save', label: 'Sv', suffix: '+' },
+  { key: 'wounds', label: 'W' },
+  { key: 'leadership', label: 'Ld' },
+  { key: 'objective_control', label: 'OC' },
+  { key: 'ws', label: 'WS', suffix: '+' },
+  { key: 'bs', label: 'BS', suffix: '+' },
+  { key: 'inv_save', label: 'Inv', suffix: '+' },
+  { key: 'feel_no_pain', label: 'FNP', suffix: '+' },
+];
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('conn-dot').className = 'status-dot active';
+  await loadActiveSession();
+  setInterval(loadActiveSession, 15000); // poll for new sessions
+}
+
+async function loadActiveSession() {
+  const session = await api('/api/sessions/active');
+  if (!session) {
+    document.getElementById('no-session-msg').style.display = 'block';
+    document.getElementById('faction-list').style.display = 'none';
+    document.getElementById('header-session-name').textContent = 'No Active Session';
+    return;
+  }
+  if (currentSession?.id !== session.id) {
+    currentSession = session;
+    socket.emit('join-session', session.id);
+    await refreshSession();
+  }
+}
+
+async function refreshSession() {
+  if (!currentSession) return;
+  const data = await api(`/api/sessions/${currentSession.id}`);
+  currentSession = data;
+  document.getElementById('header-session-name').textContent = data.name;
+
+  // If viewing a char, refresh it
+  if (selectedChar) {
+    const updated = (data.characters || []).find(c => c.id === selectedChar.id);
+    if (updated) { selectedChar = updated; renderDetailView(); }
+  } else {
+    renderSelectScreen(data.characters || []);
+  }
+}
+
+// ── Select Screen ─────────────────────────────────────────────────────────
+function renderSelectScreen(chars) {
+  if (!chars.length) return;
+  document.getElementById('no-session-msg').style.display = 'none';
+  document.getElementById('faction-list').style.display = 'block';
+
+  const grouped = {};
+  chars.forEach(c => {
+    const fn = c.faction_name || 'Unknown';
+    if (!grouped[fn]) grouped[fn] = { color: c.faction_color || '#aaa', chars: [] };
+    grouped[fn].chars.push(c);
+  });
+
+  document.getElementById('factions-container').innerHTML = Object.entries(grouped).map(([faction, { color, chars }]) => `
+    <div class="faction-group">
+      <div class="faction-header" style="border-color:${color}; color:${color};">${faction}</div>
+      <div class="char-select-grid">
+        ${chars.map(c => `
+          <div class="char-select-card" onclick="selectChar(${c.id})">
+            <div class="char-card-name">${c.name}</div>
+            <div class="char-card-meta">${c.unit_type} · ${c.points_cost} pts</div>
+            <div class="char-mini-stats">
+              <div class="mini-stat"><div class="mini-stat-label">M</div><div class="mini-stat-val">${c.movement}"</div></div>
+              <div class="mini-stat"><div class="mini-stat-label">T</div><div class="mini-stat-val">${c.toughness}</div></div>
+              <div class="mini-stat"><div class="mini-stat-label">W</div><div class="mini-stat-val">${c.effective?.wounds ?? c.wounds}</div></div>
+              <div class="mini-stat"><div class="mini-stat-label">Sv</div><div class="mini-stat-val">${c.save}+</div></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectChar(id) {
+  selectedChar = (currentSession.characters || []).find(c => c.id === id);
+  if (!selectedChar) return;
+  document.getElementById('select-screen').style.display = 'none';
+  document.getElementById('detail-screen').style.display = 'block';
+  document.getElementById('back-btn').style.display = 'block';
+  renderDetailView();
+}
+
+function showSelectScreen() {
+  selectedChar = null;
+  document.getElementById('select-screen').style.display = 'block';
+  document.getElementById('detail-screen').style.display = 'none';
+  document.getElementById('back-btn').style.display = 'none';
+}
+
+// ── Detail View ────────────────────────────────────────────────────────────
+function renderDetailView() {
+  const c = selectedChar;
+  document.getElementById('detail-name').textContent = c.name;
+  document.getElementById('detail-faction').textContent = c.faction_name || 'Unknown';
+  document.getElementById('detail-faction').style.color = c.faction_color || '#aaa';
+  document.getElementById('detail-type-pts').textContent = `${c.unit_type} · ${c.points_cost} pts`;
+
+  const modMap = {};
+  (c.modifiers || []).forEach(m => { modMap[m.field] = m.delta; });
+
+  // Stats
+  document.getElementById('stat-grid').innerHTML = STAT_FIELDS.map(({ key, label, suffix = '' }) => {
+    const base = c[key] || 0;
+    const delta = modMap[key] || 0;
+    const eff = base + delta;
+    const cls = delta > 0 ? 'modified' : delta < 0 ? 'modified-negative' : '';
+    const skip = (key === 'inv_save' || key === 'feel_no_pain') && base === 0;
+    const display = skip ? '—' : eff + suffix;
+    return `<div class="stat-cell-lg ${cls}">
+      <span class="stat-label">${label}</span>
+      <span class="stat-value">${display}</span>
+      ${delta !== 0 ? `<span class="stat-delta ${delta > 0 ? 'pos' : 'neg'}">${delta > 0 ? '+' : ''}${delta}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  // Mod controls
+  const modFields = STAT_FIELDS.slice(0, 8);
+  document.getElementById('mod-controls').innerHTML = modFields.map(({ key, label }) => `
+    <div class="mod-control">
+      <span class="mod-control-label">${label}</span>
+      <div class="mod-buttons">
+        <button class="mod-btn minus" onclick="applyMod('${key}',-1)">−</button>
+        <button class="mod-btn" onclick="applyMod('${key}',1)">+</button>
+      </div>
+    </div>
+  `).join('') + `
+    <div class="mod-control" style="grid-column:span 4;">
+      <button class="btn btn-ghost btn-sm w-full" onclick="clearAllMods()">✕ Reset All Modifiers</button>
+    </div>
+  `;
+
+  // Conditions
+  const activeConds = new Set(c.conditions || []);
+  document.getElementById('conditions-grid').innerHTML = CONDITIONS.map(cd => {
+    const key = cd.toLowerCase().replace(' ', '-');
+    const active = activeConds.has(cd);
+    return `<button class="condition-btn ${active ? 'active ' + key : ''}" onclick="toggleCondition('${cd}', ${active})">${cd}</button>`;
+  }).join('');
+
+  // Weapons
+  if (c.weapons?.length) {
+    document.getElementById('weapons-section').innerHTML = `
+      <div style="overflow-x:auto; margin-bottom:1rem;">
+        <table class="weapon-table">
+          <thead><tr><th>Name</th><th>Type</th><th>Rng</th><th>A</th><th>Sk</th><th>S</th><th>AP</th><th>D</th></tr></thead>
+          <tbody>${c.weapons.map(w => `
+            <tr>
+              <td>${w.name}</td>
+              <td class="${w.weapon_type === 'Ranged' ? 'ranged' : 'melee'}">${w.weapon_type[0]}</td>
+              <td>${w.range_inches ? w.range_inches + '"' : '—'}</td>
+              <td>${w.attacks}</td>
+              <td>${w.skill}+</td>
+              <td>${w.strength}</td>
+              <td>${w.ap}</td>
+              <td>${w.damage}</td>
+            </tr>
+          `).join('')}</tbody>
+        </table>
+      </div>
+    `;
+    if (c.weapons.some(w => w.abilities)) {
+      document.getElementById('weapons-section').innerHTML += `
+        <div class="section-label">Weapon Abilities</div>
+        ${c.weapons.filter(w => w.abilities).map(w =>
+          `<p style="font-size:0.85rem; margin-bottom:0.5rem;"><strong style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold);">${w.name}:</strong> <span style="color:var(--text-secondary);">${w.abilities}</span></p>`
+        ).join('')}
+      `;
+    }
+  } else {
+    document.getElementById('weapons-section').innerHTML = '';
+  }
+
+  // Lore
+  document.getElementById('lore-section').innerHTML = c.lore ? `
+    <div class="section-label" style="margin-top:1rem;">Lore</div>
+    <p style="font-size:0.9rem; color:var(--text-secondary); font-style:italic; line-height:1.6;">${c.lore}</p>
+  ` : '';
+}
+
+// ── Actions ────────────────────────────────────────────────────────────────
+async function applyMod(field, delta) {
+  if (!currentSession || !selectedChar) return;
+  const existing = (selectedChar.modifiers || []).find(m => m.field === field)?.delta || 0;
+  const newDelta = existing + delta;
+  await api(`/api/sessions/${currentSession.id}/characters/${selectedChar.id}/modifiers`, 'PUT', { field, delta: newDelta });
+  socket.emit('modifier-update', { sessionId: currentSession.id, charId: selectedChar.id, field, delta: newDelta });
+  await refreshAfterAction();
+}
+
+async function clearAllMods() {
+  if (!currentSession || !selectedChar) return;
+  for (const mod of (selectedChar.modifiers || [])) {
+    await api(`/api/sessions/${currentSession.id}/characters/${selectedChar.id}/modifiers/${mod.field}`, 'DELETE');
+  }
+  socket.emit('modifier-update', { sessionId: currentSession.id, charId: selectedChar.id });
+  await refreshAfterAction();
+}
+
+async function toggleCondition(condition, isActive) {
+  if (!currentSession || !selectedChar) return;
+  if (isActive) {
+    await api(`/api/sessions/${currentSession.id}/characters/${selectedChar.id}/conditions/${encodeURIComponent(condition)}`, 'DELETE');
+  } else {
+    await api(`/api/sessions/${currentSession.id}/characters/${selectedChar.id}/conditions`, 'POST', { condition });
+  }
+  socket.emit('condition-update', { sessionId: currentSession.id, charId: selectedChar.id, condition, action: isActive ? 'remove' : 'add' });
+  await refreshAfterAction();
+}
+
+async function refreshAfterAction() {
+  const data = await api(`/api/sessions/${currentSession.id}`);
+  currentSession = data;
+  if (selectedChar) {
+    selectedChar = (data.characters || []).find(c => c.id === selectedChar.id);
+    if (selectedChar) renderDetailView();
+  }
+}
+
+// ── Socket ─────────────────────────────────────────────────────────────────
+socket.on('modifier-updated', async () => { await refreshAfterAction(); });
+socket.on('condition-updated', async () => { await refreshAfterAction(); });
+socket.on('session-ended', () => {
+  toast('Session has ended. Stats reverted.', 'success');
+  currentSession = null;
+  selectedChar = null;
+  showSelectScreen();
+  document.getElementById('no-session-msg').style.display = 'block';
+  document.getElementById('faction-list').style.display = 'none';
+  document.getElementById('header-session-name').textContent = 'Session Ended';
+});
+
+init();
+</script>
+</body>
+</html>

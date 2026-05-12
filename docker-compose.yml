@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  wh40k:
+    build: .
+    container_name: wh40k-session-manager
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist the SQLite database and uploaded maps between container restarts
+      - wh40k_data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  wh40k_data:
+    driver: local

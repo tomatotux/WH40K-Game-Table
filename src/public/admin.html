@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administratum — WH40K</title>
+  <link rel="stylesheet" href="/css/shared.css">
+  <style>
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      height: calc(100vh - 54px);
+    }
+
+    .admin-sidebar {
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    .admin-main { overflow-y: auto; padding: 1.5rem; }
+
+    .sidebar-section { margin-bottom: 1.5rem; }
+    .sidebar-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.6rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.15rem;
+    }
+
+    .sidebar-item:hover { border-color: var(--border); color: var(--text-primary); background: var(--bg-card); }
+    .sidebar-item.active { border-color: var(--gold-dim); color: var(--gold); background: rgba(201,168,76,0.08); }
+
+    .sidebar-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .faction-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Content panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title { font-family: 'Cinzel', serif; font-size: 1.1rem; color: var(--gold); }
+
+    /* Characters table */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      font-family: 'Cinzel', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 2px solid var(--border);
+      text-align: left;
+    }
+    .data-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid rgba(42,42,62,0.5);
+      font-size: 0.88rem;
+      color: var(--text-primary);
+    }
+    .data-table tr:hover td { background: var(--bg-card); }
+    .data-table tr:last-child td { border-bottom: none; }
+
+    .stat-mini { font-family: 'Cinzel', serif; font-size: 0.75rem; }
+
+    /* Form grid */
+    .form-grid-stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+    }
+
+    .form-grid-stats label { font-size: 0.6rem; }
+    .form-grid-stats input { padding: 0.35rem; text-align: center; }
+
+    /* Search */
+    .search-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .search-bar input { flex: 1; }
+
+    /* Sessions list */
+    .session-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-logo">
+    <span class="skull-icon">☩</span>
+    <div>
+      <div class="header-title">Warhammer 40,000</div>
+      <div class="header-subtitle">Administratum — Database Management</div>
+    </div>
+  </div>
+  <nav class="nav-links">
+    <a href="/" class="nav-link">⬅ Home</a>
+    <a href="/gm" class="nav-link">GM Console</a>
+    <a href="/tablet" class="nav-link">Tablet</a>
+  </nav>
+</header>
+
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <div class="admin-sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Database</div>
+      <div class="sidebar-item active" onclick="showPanel('characters')">📜 All Characters</div>
+      <div class="sidebar-item" onclick="showPanel('factions')">⚑ Factions</div>
+      <div class="sidebar-item" onclick="showPanel('sessions')">⚔ Sessions</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">By Faction</div>
+      <div id="faction-sidebar"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Actions</div>
+      <div class="sidebar-item" onclick="showPanel('new-char')">✚ New Character</div>
+      <div class="sidebar-item" onclick="showPanel('new-faction')">✚ New Faction</div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="admin-main">
+
+    <!-- ── All Characters ── -->
+    <div class="panel active" id="panel-characters">
+      <div class="panel-header">
+        <div class="panel-title">Characters & Units</div>
+        <button class="btn btn-primary btn-sm" onclick="showPanel('new-char')">✚ Add Character</button>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="char-search" placeholder="Search characters..." oninput="filterChars()">
+        <select id="faction-filter" onchange="filterChars()" style="width:auto;">
+          <option value="">All Factions</option>
+        </select>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Faction</th><th>Type</th>
+            <th>M</th><th>T</th><th>Sv</th><th>W</th><th>Ld</th>
+            <th>Pts</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="chars-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- ── Factions ── -->
+    <div class="panel" id="panel-factions">
+      <div class="panel-header">
+        <div class="panel-title">Factions</div>
+        <button class="btn btn-primary btn-sm" onclick="showPanel('new-faction')">✚ Add Faction</button>
+      </div>
+      <div id="factions-list"></div>
+    </div>
+
+    <!-- ── Sessions ── -->
+    <div class="panel" id="panel-sessions">
+      <div class="panel-header">
+        <div class="panel-title">Battle Sessions</div>
+        <button class="btn btn-ghost btn-sm" onclick="loadSessions()">↻ Refresh</button>
+      </div>
+      <div id="sessions-list"></div>
+    </div>
+
+    <!-- ── New Character ── -->
+    <div class="panel" id="panel-new-char">
+      <div class="panel-header">
+        <div class="panel-title" id="char-form-title">New Character</div>
+      </div>
+      <form onsubmit="saveChar(event)" id="char-form">
+        <input type="hidden" id="char-id">
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="cf-name" required>
+          </div>
+          <div class="form-group">
+            <label>Faction</label>
+            <select id="cf-faction"></select>
+          </div>
+          <div class="form-group">
+            <label>Unit Type</label>
+            <select id="cf-unit-type">
+              <option>Infantry</option><option>Character</option><option>Vehicle</option>
+              <option>Monster</option><option>Cavalry</option><option>Fly</option>
+              <option>Battlesuit</option><option>Titanic</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Points Cost</label>
+            <input type="number" id="cf-pts" value="0" min="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Keywords (comma-separated)</label>
+          <input type="text" id="cf-keywords" placeholder="e.g. Adeptus Astartes, Infantry, Core">
+        </div>
+
+        <div class="form-group">
+          <label>Lore / Flavour Text</label>
+          <textarea id="cf-lore" rows="3" style="resize:vertical;"></textarea>
+        </div>
+
+        <div class="ornament-divider">Characteristics</div>
+
+        <div class="form-grid-stats">
+          <div class="form-group"><label>Movement</label><input type="number" id="cf-movement" value="6" min="1" max="30"></div>
+          <div class="form-group"><label>Toughness</label><input type="number" id="cf-toughness" value="4" min="1" max="14"></div>
+          <div class="form-group"><label>Save (Sv+)</label><input type="number" id="cf-save" value="4" min="2" max="7"></div>
+          <div class="form-group"><label>Wounds</label><input type="number" id="cf-wounds" value="1" min="1" max="40"></div>
+          <div class="form-group"><label>Leadership</label><input type="number" id="cf-leadership" value="7" min="1" max="12"></div>
+          <div class="form-group"><label>OC</label><input type="number" id="cf-oc" value="1" min="0" max="10"></div>
+          <div class="form-group"><label>WS+</label><input type="number" id="cf-ws" value="4" min="2" max="7"></div>
+          <div class="form-group"><label>BS+</label><input type="number" id="cf-bs" value="4" min="2" max="7"></div>
+          <div class="form-group"><label>Inv+ (0=none)</label><input type="number" id="cf-inv" value="0" min="0" max="6"></div>
+          <div class="form-group"><label>FNP+ (0=none)</label><input type="number" id="cf-fnp" value="0" min="0" max="6"></div>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+          <button type="submit" class="btn btn-primary">💾 Save Character</button>
+          <button type="button" class="btn btn-ghost" onclick="showPanel('characters')">Cancel</button>
+        </div>
+      </form>
+
+      <!-- Weapons (only when editing) -->
+      <div id="weapons-editor" style="display:none; margin-top:2rem;">
+        <div class="ornament-divider">Weapons</div>
+        <div id="weapons-list-admin"></div>
+        <div class="card" style="margin-top:0.75rem;">
+          <div class="card-header">Add Weapon</div>
+          <div style="padding:1rem;">
+            <div class="grid-2">
+              <div class="form-group"><label>Weapon Name</label><input type="text" id="wf-name"></div>
+              <div class="form-group"><label>Type</label>
+                <select id="wf-type"><option>Ranged</option><option>Melee</option></select>
+              </div>
+              <div class="form-group"><label>Range (inches)</label><input type="number" id="wf-range" value="0"></div>
+              <div class="form-group"><label>Attacks</label><input type="text" id="wf-attacks" value="1"></div>
+              <div class="form-group"><label>Skill+</label><input type="number" id="wf-skill" value="4"></div>
+              <div class="form-group"><label>Strength</label><input type="number" id="wf-str" value="4"></div>
+              <div class="form-group"><label>AP</label><input type="number" id="wf-ap" value="0"></div>
+              <div class="form-group"><label>Damage</label><input type="text" id="wf-damage" value="1"></div>
+            </div>
+            <div class="form-group"><label>Abilities</label><input type="text" id="wf-abilities" placeholder="e.g. Assault, Lethal Hits"></div>
+            <button class="btn btn-primary btn-sm" onclick="addWeapon()">✚ Add Weapon</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── New Faction ── -->
+    <div class="panel" id="panel-new-faction">
+      <div class="panel-header">
+        <div class="panel-title">New Faction</div>
+      </div>
+      <div style="max-width:400px;">
+        <div class="form-group"><label>Faction Name *</label><input type="text" id="ff-name"></div>
+        <div class="form-group"><label>Color</label><input type="color" id="ff-color" value="#c0392b" style="height:40px;"></div>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-primary" onclick="saveFaction()">💾 Save Faction</button>
+          <button class="btn btn-ghost" onclick="showPanel('factions')">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/js/shared.js"></script>
+<script>
+let allChars = [], allFactions = [];
+let editingCharId = null;
+
+async function init() {
+  allFactions = await api('/api/factions');
+  allChars = await api('/api/characters');
+  renderFactionsDropdown();
+  renderFactionSidebar();
+  renderCharsTable(allChars);
+  populateFactionFilter();
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+
+  if (name === 'factions') { renderFactionsList(); }
+  if (name === 'sessions') { loadSessions(); }
+  if (name === 'new-char' && !editingCharId) { resetCharForm(); }
+  if (name === 'characters') { renderCharsTable(allChars); }
+}
+
+// ── Characters ─────────────────────────────────────────────────────────────
+function renderCharsTable(chars) {
+  document.getElementById('chars-tbody').innerHTML = chars.map(c => `
+    <tr>
+      <td><strong style="font-family:'Cinzel',serif;font-size:0.8rem;">${c.name}</strong></td>
+      <td><span class="faction-badge" style="border:1px solid ${c.faction_color||'#555'};color:${c.faction_color||'#aaa'};font-size:0.6rem;">${c.faction_name||'—'}</span></td>
+      <td style="font-size:0.8rem;">${c.unit_type}</td>
+      <td class="stat-mini">${c.movement}"</td>
+      <td class="stat-mini">${c.toughness}</td>
+      <td class="stat-mini">${c.save}+</td>
+      <td class="stat-mini">${c.wounds}</td>
+      <td class="stat-mini">${c.leadership}</td>
+      <td style="font-size:0.8rem;">${c.points_cost}</td>
+      <td>
+        <div style="display:flex;gap:0.25rem;">
+          <button class="btn btn-ghost btn-sm" onclick="editChar(${c.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteChar(${c.id})">Del</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterChars() {
+  const q = document.getElementById('char-search').value.toLowerCase();
+  const fid = document.getElementById('faction-filter').value;
+  const filtered = allChars.filter(c =>
+    c.name.toLowerCase().includes(q) &&
+    (!fid || String(c.faction_id) === fid)
+  );
+  renderCharsTable(filtered);
+}
+
+function populateFactionFilter() {
+  const sel = document.getElementById('faction-filter');
+  allFactions.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id; opt.textContent = f.name;
+    sel.appendChild(opt);
+  });
+}
+
+function renderFactionsDropdown() {
+  const sel = document.getElementById('cf-faction');
+  sel.innerHTML = `<option value="">— None —</option>` + allFactions.map(f =>
+    `<option value="${f.id}">${f.name}</option>`
+  ).join('');
+}
+
+function renderFactionSidebar() {
+  document.getElementById('faction-sidebar').innerHTML = allFactions.map(f => `
+    <div class="sidebar-item" onclick="filterByFaction(${f.id})">
+      <span class="faction-dot" style="background:${f.color}"></span>
+      ${f.name}
+    </div>
+  `).join('');
+}
+
+async function editChar(id) {
+  editingCharId = id;
+  const c = await api(`/api/characters/${id}`);
+  document.getElementById('char-form-title').textContent = `Edit: ${c.name}`;
+  document.getElementById('char-id').value = id;
+  document.getElementById('cf-name').value = c.name;
+  document.getElementById('cf-faction').value = c.faction_id || '';
+  document.getElementById('cf-unit-type').value = c.unit_type;
+  document.getElementById('cf-pts').value = c.points_cost;
+  document.getElementById('cf-keywords').value = c.keywords;
+  document.getElementById('cf-lore').value = c.lore;
+  document.getElementById('cf-movement').value = c.movement;
+  document.getElementById('cf-toughness').value = c.toughness;
+  document.getElementById('cf-save').value = c.save;
+  document.getElementById('cf-wounds').value = c.wounds;
+  document.getElementById('cf-leadership').value = c.leadership;
+  document.getElementById('cf-oc').value = c.objective_control;
+  document.getElementById('cf-ws').value = c.ws;
+  document.getElementById('cf-bs').value = c.bs;
+  document.getElementById('cf-inv').value = c.inv_save;
+  document.getElementById('cf-fnp').value = c.feel_no_pain;
+  showPanel('new-char');
+  document.getElementById('weapons-editor').style.display = 'block';
+  renderWeaponsAdmin(c.weapons || []);
+}
+
+function resetCharForm() {
+  editingCharId = null;
+  document.getElementById('char-form-title').textContent = 'New Character';
+  document.getElementById('char-form').reset();
+  document.getElementById('char-id').value = '';
+  document.getElementById('weapons-editor').style.display = 'none';
+}
+
+async function saveChar(e) {
+  e.preventDefault();
+  const body = {
+    faction_id: document.getElementById('cf-faction').value || null,
+    name: document.getElementById('cf-name').value,
+    unit_type: document.getElementById('cf-unit-type').value,
+    points_cost: parseInt(document.getElementById('cf-pts').value) || 0,
+    keywords: document.getElementById('cf-keywords').value,
+    lore: document.getElementById('cf-lore').value,
+    movement: parseInt(document.getElementById('cf-movement').value),
+    toughness: parseInt(document.getElementById('cf-toughness').value),
+    save: parseInt(document.getElementById('cf-save').value),
+    wounds: parseInt(document.getElementById('cf-wounds').value),
+    leadership: parseInt(document.getElementById('cf-leadership').value),
+    objective_control: parseInt(document.getElementById('cf-oc').value),
+    ws: parseInt(document.getElementById('cf-ws').value),
+    bs: parseInt(document.getElementById('cf-bs').value),
+    inv_save: parseInt(document.getElementById('cf-inv').value),
+    feel_no_pain: parseInt(document.getElementById('cf-fnp').value),
+  };
+
+  if (editingCharId) {
+    await api(`/api/characters/${editingCharId}`, 'PUT', body);
+    toast('Character updated', 'success');
+  } else {
+    const { id } = await api('/api/characters', 'POST', body);
+    editingCharId = id;
+    document.getElementById('char-id').value = id;
+    document.getElementById('weapons-editor').style.display = 'block';
+    document.getElementById('char-form-title').textContent = `Edit: ${body.name}`;
+    toast('Character created', 'success');
+  }
+
+  allChars = await api('/api/characters');
+}
+
+async function deleteChar(id) {
+  if (!confirm('Delete this character? This cannot be undone.')) return;
+  await api(`/api/characters/${id}`, 'DELETE');
+  allChars = await api('/api/characters');
+  renderCharsTable(allChars);
+  toast('Character deleted');
+}
+
+function filterByFaction(fid) {
+  document.getElementById('faction-filter').value = fid;
+  document.getElementById('char-search').value = '';
+  filterChars();
+  showPanel('characters');
+}
+
+// ── Weapons ────────────────────────────────────────────────────────────────
+function renderWeaponsAdmin(weapons) {
+  if (!weapons.length) {
+    document.getElementById('weapons-list-admin').innerHTML = `<p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.5rem;">No weapons yet.</p>`;
+    return;
+  }
+  document.getElementById('weapons-list-admin').innerHTML = `
+    <table class="weapon-table" style="margin-bottom:0.75rem;">
+      <thead><tr><th>Name</th><th>Type</th><th>Rng</th><th>A</th><th>Sk</th><th>S</th><th>AP</th><th>D</th><th></th></tr></thead>
+      <tbody>${weapons.map(w => `
+        <tr>
+          <td>${w.name}</td>
+          <td>${w.weapon_type}</td>
+          <td>${w.range_inches || '—'}</td>
+          <td>${w.attacks}</td>
+          <td>${w.skill}+</td>
+          <td>${w.strength}</td>
+          <td>${w.ap}</td>
+          <td>${w.damage}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteWeapon(${w.id})">✕</button></td>
+        </tr>
+      `).join('')}</tbody>
+    </table>
+  `;
+}
+
+async function addWeapon() {
+  if (!editingCharId) return toast('Save the character first');
+  const name = document.getElementById('wf-name').value.trim();
+  if (!name) return toast('Weapon name required');
+  await api(`/api/characters/${editingCharId}/weapons`, 'POST', {
+    name,
+    weapon_type: document.getElementById('wf-type').value,
+    range_inches: parseInt(document.getElementById('wf-range').value) || 0,
+    attacks: document.getElementById('wf-attacks').value,
+    skill: parseInt(document.getElementById('wf-skill').value),
+    strength: parseInt(document.getElementById('wf-str').value),
+    ap: parseInt(document.getElementById('wf-ap').value),
+    damage: document.getElementById('wf-damage').value,
+    abilities: document.getElementById('wf-abilities').value,
+  });
+  const c = await api(`/api/characters/${editingCharId}`);
+  renderWeaponsAdmin(c.weapons || []);
+  document.getElementById('wf-name').value = '';
+  toast('Weapon added', 'success');
+}
+
+async function deleteWeapon(weapId) {
+  await api(`/api/characters/${editingCharId}/weapons/${weapId}`, 'DELETE');
+  const c = await api(`/api/characters/${editingCharId}`);
+  renderWeaponsAdmin(c.weapons || []);
+}
+
+// ── Factions ───────────────────────────────────────────────────────────────
+function renderFactionsList() {
+  document.getElementById('factions-list').innerHTML = allFactions.map(f => `
+    <div class="session-row">
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <span class="faction-dot" style="background:${f.color};width:16px;height:16px;"></span>
+        <span style="font-family:'Cinzel',serif;font-size:0.9rem;">${f.name}</span>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteFaction(${f.id})">Delete</button>
+    </div>
+  `).join('');
+}
+
+async function saveFaction() {
+  const name = document.getElementById('ff-name').value.trim();
+  if (!name) return toast('Name required');
+  await api('/api/factions', 'POST', { name, color: document.getElementById('ff-color').value });
+  allFactions = await api('/api/factions');
+  renderFactionsDropdown();
+  renderFactionSidebar();
+  toast(`Faction "${name}" created`, 'success');
+  document.getElementById('ff-name').value = '';
+  showPanel('factions');
+}
+
+async function deleteFaction(id) {
+  if (!confirm('Delete faction?')) return;
+  await api(`/api/factions/${id}`, 'DELETE');
+  allFactions = await api('/api/factions');
+  renderFactionsList();
+  renderFactionSidebar();
+}
+
+// ── Sessions ───────────────────────────────────────────────────────────────
+async function loadSessions() {
+  const sessions = await api('/api/sessions');
+  document.getElementById('sessions-list').innerHTML = sessions.length ? sessions.map(s => `
+    <div class="session-row">
+      <div>
+        <div style="font-family:'Cinzel',serif; font-size:0.9rem;">${s.name}</div>
+        <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.2rem;">
+          ${new Date(s.created_at).toLocaleString()} · ${s.character_count} units
+          ${s.status === 'active' ? '<span style="color:var(--green-bright);"> · Active</span>' : '<span style="color:var(--text-dim);"> · Ended</span>'}
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteSession('${s.id}')">Delete</button>
+    </div>
+  `).join('') : '<p style="color:var(--text-dim);font-family:\'Cinzel\',serif;font-size:0.8rem;">No sessions found.</p>';
+}
+
+async function deleteSession(id) {
+  if (!confirm('Delete this session permanently?')) return;
+  await api(`/api/sessions/${id}`, 'DELETE');
+  loadSessions();
+}
+
+init();
+</script>
+</body>
+</html>
